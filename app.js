@@ -4,6 +4,10 @@ const userModel = require("./models/user");
 const app = express();
 const PORT = process.env.PORT || 5000;
 var bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+const cookieParser = require("cookie-parser");
+require("dotenv").config();
+const auth = require("./middleware/auth");
 
 const DBURI = "mongodb+srv://admin:admin@cluster0.rbv3k1z.mongodb.net/crudapp";
 
@@ -14,6 +18,17 @@ mongoose
 
 // Body-Parser
 app.use(express.json());
+// MiddleWare
+app.use(cookieParser());
+
+app.get("/api/test", (request, response) => {
+  response.cookie("test", "Aneeq");
+  response.send("testing");
+});
+
+app.get("/api/secret", auth, (request, response) => {
+  response.send("testing");
+});
 
 // Get User //63cd37c6343822379904231c
 app.get("/api/user/:userid", (request, response) => {
@@ -136,6 +151,7 @@ app.post("/api/signup", (request, response) => {
 
 app.post("/api/login", (request, response) => {
   const { email, password } = request.body;
+  let token;
   if ((!email, !password)) {
     response.json({
       message: "Required field is missing",
@@ -159,18 +175,26 @@ app.post("/api/login", (request, response) => {
         });
         return;
       } else {
-        const comparePassword = bcrypt.compareSync(password, data.password)
-        if(comparePassword){
+        const comparePassword = bcrypt.compareSync(password, data.password);
+        token = data.generateAuthToken();
+        console.log(token);
+        response.cookie("jwtToken", token, {
+          expires: new Date(Date.now() + 2589200000),
+          httpOnly: true,
+        });
+
+        if (comparePassword) {
           response.json({
             message: "User Successfully Login",
             status: true,
-            data: data
-          })
-        } else{
+            data: data,
+            token: token,
+          });
+        } else {
           response.json({
             message: "Credentials Error",
-            status: false
-          })
+            status: false,
+          });
         }
       }
     }
